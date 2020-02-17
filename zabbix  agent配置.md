@@ -1,0 +1,162 @@
+### 一、zabbix 安装配置
+
+1、zabbix服务器平台
+
+```
+1）安装数据库
+# rpm -Uvh https://repo.zabbix.com/zabbix/4.4/rhel/7/x86_64/zabbix-release-4.4-1.el7.noarch.
+# yum clean all
+
+2）安装zabbix server、Web前端、agent
+# yum -y install zabbix-server-mysql zabbix-web-mysql zabbix-agent
+
+3）创建初始数据库
+# mysql -uroot -p
+passwordXXX
+mysql> create database zabbix character set utf8 collate utf8_bin;
+mysql> grant all privileges on zabbix.* to root@localhost identified by 'passwordXXX';
+mysql> quit;
+
+4）导入初始架构和数据，系统将提示您输入新创建的密码
+# zcat /usr/share/doc/zabbix-server-mysql*/create.sql.gz | mysql -uroot -p zabbix
+
+5）为Zabbix server配置数据库
+编辑配置文件 /etc/zabbix/zabbix_server.conf
+DBPassword=passwordXXX
+
+6）为Zabbix前端配置PHP
+编辑配置文件 /etc/httpd/conf.d/zabbix.conf, 打开注释.
+# php_value date.timezone Europe/Riga
+
+7）启动服务器
+# systemctl restart zabbix-server zabbix-agent httpd
+# systemctl enable zabbix-server zabbix-agent httpd
+
+8）打开前端
+http://server_ip_or_name/zabbix
+```
+
+
+
+2、监控其他客户端机器
+
+```linux
+1）pm安装
+# rpm -Uvh https://repo.zabbix.com/zabbix/4.4/rhel/7/x86_64/zabbix-release-4.4-1.el7.noarch.rpm
+# yum clean all
+# yum install zabbix-agent -y
+
+2）配置
+# vim /etc/zabbix/zabbix_agentd.conf
+Hostname=db01        #本机的主机名
+Server=172.0.0.1，192.168.1.63     #zabbix服务器的地址，使用内网地址
+ServerActive=172.0.0.1，192.168.1.63
+
+3）启动
+# systemctl start zabbix-agent.service
+# systemctl enable zabbix-agent.service
+# netstat -lntup|grep zabbix_agentd
+
+4）启动失败，问题为 没有自主建立*/var/log/zabbix/zabbix_agentd.log
+# mkdir /var/log/zabbix/
+# touch /var/log/zabbix/zabbix_agentd.log
+# chown zabbix.zabbix /var/log/zabbix/zabbix_agentd.log
+```
+
+### 二、安装 **prometheus**
+
+1、安装prometheus服务
+
+```
+1）下载软件包
+#wget https://github.com/prometheus/prometheus/releases/download/v2.15.2/prometheus-2.15.2.linux-amd64.tar.gz
+注： wget 没安装  使用 #yum install wget -y
+
+2）解压软件包
+#tar -zxvf  prometheus-2.15.2.linux-amd64.tar.gz   
+#mkdir /usr/local/prometheus
+#mv prometheus-2.15.2.linux-amd64 /usr/local/prometheus
+
+3）修改配置文件
+#vim  /usr/local/prometheus/prometheus-2.15.2.linux-amd64/prometheus.yml
+
+scrape_configs:
+  # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
+  - job_name: 'prometheus'
+
+    # metrics_path defaults to '/metrics'
+    # scheme defaults to 'http'.
+
+    static_configs:
+    #可以修改页面访问端口
+    - targets: ['172.17.0.48:9090']
+    
+4）修改文件权限
+# chmod –R 777  /usr/local/prometheus/prometheus-2.15.2.linux-amd64/*
+    
+ 5）设置开机启动
+ #touch /usr/lib/systemd/system/prometheus.service
+ #vi /usr/lib/systemd/system/prometheus.service
+    
+    [Unit]
+    Description=Prometheus
+    Documentation=https://prometheus.io/docs/introduction/overview/
+    Wants=network-online.target
+    After=network-online.target    
+    [Service]
+    User=root
+    Group=root
+    Type=simple
+    ExecStart=/usr/local/prometheus/prometheus-2.15.2.linux-amd64/prometheus   --config.file=/usr/local/prometheus/prometheus-2.15.2.linux-amd64/prometheus.yml 
+    [Install]
+    WantedBy=multi-user.target	
+    
+6）设置开机启动
+# systemctl enable prometheus
+# systemctl start  Prometheus
+
+7）登录
+http://172.17.0.48:9090
+```
+
+2、客户机安装node_exporter
+
+```
+1）下载压缩包
+#wget https://github.com/prometheus/node_exporter/releases/download/v0.18.1/node_exporter-0.18.1.linux-amd64.tar.gz
+
+2）解压缩
+ #tar -zxvf node_exporter-0.18.1.linux-amd64.tar.gz
+ #mkdir /usr/local/node_exporter/
+ #mv node_exporter-0.18.1.linux-amd64  /usr/local/node_exporter/
+ 
+3）设置开机启动
+#vim /usr/lib/systemd/system/node_exporter.service
+	[Unit]
+	Description=node_exporter
+	Documentation=https://prometheus.io/
+	After=network.target
+	[Service]
+	Type=simple
+	User=root
+	ExecStart=/usr/local/node_exporter/node_exporter
+	Restart=on-failure
+	[Install]
+	WantedBy=multi-user.target
+#systemctl enable node_exporter
+#systemctl start node_exporter
+
+4）设置iptables
+#vim /etc/sysconfig/iptables
+	-A INPUT -p tcp -m state --state NEW -m tcp --dport 9100 -j ACCEPT
+#systemctl restart iptables
+
+5)修改prometheus服务器配置文件并重启
+#vim  /usr/local/prometheus/prometheus-2.15.2.linux-amd64/prometheus.yml
+  新增：
+  - job_name: 'agent'
+    static_configs:
+      - targets: ['172.17.0.47:9100']
+#systemctl  restart prometheus
+```
+
