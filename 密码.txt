@@ -1,3 +1,18 @@
 gitlab£º  zhangyx1    xing1110
 github:  q431062912   Zyxing1110
 	 zhangyx1234  #xing1110
+
+
+
+zabbix:
+	µÇÂ¼Á´½Ó£º http://172.17.0.48/zabbix
+	Admin zabbix
+
+Grafana 
+	µÇÂ¼Á´½Ó:  http://172.17.0.48:3000
+
+	admin admin 
+OpenStack
+	µÇÂ¼Á´½Ó£º http://172.17.0.10/dashboard
+
+	admin capitek2019
