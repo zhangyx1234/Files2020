@@ -16,3 +16,5 @@ OpenStack
 	µÇÂ¼Á´½Ó£º http://172.17.0.10/dashboard
 
 	admin capitek2019
+
+prometheus Á´½Ó£º172.17.0.46:9090
