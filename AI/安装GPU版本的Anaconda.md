@@ -1,4 +1,4 @@
-1、安装GPU版本的Anaconda
+## 1、安装GPU版本的Anaconda
 
 ```linux
 1）建立新的环境
@@ -23,7 +23,7 @@ import torch
 torch.cuda.is_available()
 ```
 
-2 、修改Jupter  Notebook 路径
+## 2 、修改Jupter  Notebook 路径
 
 ```
 1）查看路径方法： 在Anaconda Prompt中输入
@@ -35,7 +35,7 @@ jupyter notebook --generate-config
 3）右击属性，将%USERPROFILE%删除
 ```
 
-3 、修改 Jupyter Notebook编辑风格
+## 3 、修改 Jupyter Notebook编辑风格
 
 ```
 1) 安装主题工具 jupterthemes 
@@ -57,7 +57,7 @@ jt --lineh 140  -tf ptmono -t onedork -ofs 13 -nfs 14 -tfs 14 -fs 14 -T -N -dfs 
 
 ```
 
-4、代码补全的设置方法
+## 4、代码补全的设置方法
 
 ```
 1）安装jupyter_contrib_nbextensions
@@ -69,7 +69,7 @@ conda install jupyter_nbextensions_configurator
 3）安装完成后重新打开jupyternotebook，在菜单栏可以看到 NBextensions这个选项，在其中勾选上“Hinterland”即可打开自动补全。
 ```
 
-5、切换环境
+## 5、切换环境
 
 ```
 1）切换到pytroch 环境
