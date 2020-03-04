@@ -46,6 +46,8 @@ webAPI：http://172.17.0.41:9090/
 
 ## 2、找一个Short-lived Jobs的示例，配置其向**Pushgateway**推送监控指标？
 
+
+
 ## 3、对**AlertManager**进行配置，将告警发送到邮件方式，提供部署配置说明
 
 ## 4、对**AlertManager**进行配置，将告警发送到微信方式，提供部署配置说明
