@@ -1,36 +1,42 @@
 ## 1、**Prometheus**自动发现被监控节点的配置方法？即图中的discover targets的file_sd方式
 
-```
-1）创建json文件
+##### 1）创建json文件
 
-vi /usr/local/prometheus/file_ds_server.json
+```
+#vi /usr/local/prometheus/file_ds_server.json
 [
   {
     "targets":  ["172.17.0.10:9100"]
   }
 ]
+```
 
-2）在prometheus配置文件中添加新的job
-  
-  - job_name: 'file_ds_server'
+##### 2）在prometheus配置文件中添加新的job
+
+```
+   ...
+   - job_name: 'file_ds_server'
     file_sd_configs:
       - files:
-        - /usr/local/prometheus/file_ds_server.json file路径
-        refresh_interval: 10s 
-        
-注：因为配置文件有修改需要重新启动prometheus服务器
+        - /usr/local/prometheus/file_ds_server.json file
+        refresh_interval: 10s
+   ...
 
-3）有新的metrics节点加入时直接修改在json文件添加
+#注：因为配置文件有修改需要重新启动prometheus服务器
+```
 
+##### 3）有新的metrics节点加入时直接修改在json文件添加
+
+```
+#vi /usr/local/prometheus/file_ds_server.json
 [
   {
     "targets":  ["172.17.0.10:9100","172.17.0.10:9100","172.17.0.10:9100"]
   }
 ]
-
-4)重新加载targets能够发现新的监控节点已经加入，无需重启服务器
-
 ```
+
+##### 4）重新加载targets能够发现新的监控节点已经加入，无需重启服务器
 
 添加前：
 
@@ -40,13 +46,15 @@ vi /usr/local/prometheus/file_ds_server.json
 
 ![image-20200303145039737](C:\Users\chenh\AppData\Roaming\Typora\typora-user-images\image-20200303145039737.png)
 
-webAPI：http://172.17.0.41:9090/
+
+
+注：webAPI：http://172.17.0.41:9090/
 
 
 
 ## 2、找一个Short-lived Jobs的示例，配置其向**Pushgateway**推送监控指标？
 
-###### 1）安装pushgateway
+##### 1）安装pushgateway
 
 ```
 #docker pull prom/pushgateway
@@ -55,21 +63,19 @@ webAPI：http://172.17.0.41:9090/
 #访问http://172.17.0.41:9091
 ```
 
-###### 2） 在prometheus配置文件中添加pushgateway
+##### 2） 在prometheus配置文件中添加pushgateway
 
 ```
+  ...
   - job_name: pushgateway
     static_configs:
       - targets: ['172.17.0.41:9091']
         labels:
           instance: pushgateway
+  ...
 ```
 
-push前：
-
-![image-20200304152616621](C:\Users\chenh\AppData\Roaming\Typora\typora-user-images\image-20200304152616621.png)
-
-###### 3）API的方式Push数据到pushgateway
+##### 3）API的方式Push数据到pushgateway
 
  		Push 数据到 PushGateway 中，可以通过其提供的 API 标准接口来添加，默认 URL 地址为：http://<ip>:9091/metrics/job/<JOBNAME>{/<LABEL_NAME>/<LABEL_VALUE>}，
 
@@ -89,6 +95,11 @@ some_metric{label="val1"} 42
 another_metric 2398.283
 EOF
 
+cat <<EOF | curl --data-binary @- http://172.17.0.41:9091/metrics/job/some_job/instance/some_instance
+some_metric{label="val1"} 42
+another_metric 2398.283
+EOF
+
 #删除某个组下的某实例的所有数据：
  curl -X DELETE http:/172.17.0.41:9091/metrics/job/some_job/instance/some_instance
 
@@ -96,28 +107,29 @@ EOF
 curl -X DELETE http://172.17.0.41:9091/metrics/job/some_job
 ```
 
+##### 4）数据push成功截图
 
+![image-20200306154150436](C:\Users\chenh\AppData\Roaming\Typora\typora-user-images\image-20200306154150436.png)
+
+![image-20200306154218288](C:\Users\chenh\AppData\Roaming\Typora\typora-user-images\image-20200306154218288.png)
 
 ## 3、对**AlertManager**进行配置，将告警发送到邮件方式，提供部署配置说明
 
-1）启动AlertManager
+##### 1）启动AlertManager
 
 ```
 $ docker run --name alertmanager -d -p 9093:9093 prom/alertmanager:latest
 ```
 
-2）AlertManager 默认启动的端口为 `9093`，启动完成后，浏览器访问 `http://:9093` 可以看到默认提供的 UI 页面
+​	AlertManager 默认启动的端口为 `9093`，启动完成后，浏览器访问 `http://172.17.0.47:9093` 可以看到默认提供的 UI 页面
 
-![image-20200305094745690](C:\Users\chenh\AppData\Roaming\Typora\typora-user-images\image-20200305094745690.png)
+##### 2）告警配置说明
 
-3）配置邮件告警
-
-​	AlertManager 默认配置文件为 `alertmanager.yml`，在容器内路径为 `/etc/alertmanager/alertmanager.yml`
+​	AlertManager 默认配置文件为 `alertmanager.yml`，容器内路径为 `/etc/alertmanager/alertmanager.yml`
 
 ```
-#docker exec -it  AertManagerid  /bin/sh
-#vi /etc/altermanager/alertmanager.yml
-#默认配置如下
+#docker exec -it  alertmanager  /bin/sh
+#cat /etc/altermanager/alertmanager.yml
 
 global:
   resolve_timeout: 5m
@@ -148,7 +160,7 @@ inhibit_rules:
 - receivers: 配置告警消息接受者信息，例如常用的 email、wechat、slack、webhook 等消息通知方式。
 - inhibit_rules: 抑制规则配置，当存在与另一组匹配的警报（源）时，抑制规则将禁用与一组匹配的警报（目标）。
 
-配置一下使用 Email 方式通知报警信息，这里以 QQ 邮箱为例，配置如下：
+##### 3）配置一下使用 Email 方式通知报警信息，这里以 163 邮箱为例，配置如下：
 
 ```
 global:
@@ -174,40 +186,21 @@ inhibit_rules:
       severity: 'critical'
     target_match:
       severity: 'warning'
-    equal: ['alertname', 'dev', 'instance']
-    
-    
-global:
-  smtp_smarthost: 'smtp.163.com:25'　　
-  smtp_from: '15933356856@163.com'　　　　　　
-  smtp_auth_username: '15933356856@163.com'　　
-  smtp_auth_password: 'xing1110'　　　　　　　　
-
-route:
-  group_by: ['alertname']
-
-  repeat_interval: 5m
-
-  receiver: live-monitoring
-
-receivers:
-- name: 'live-monitoring'
-  email_configs:
-  - to: '431062912@qq.com'　
-
+    equal: ['alertname', 'dev', 'instance']    
+ 
 ```
 
 关键的配置说明一下：
 
-- smtp_smarthost: 这里为 QQ 邮箱 SMTP 服务地址，官方地址为 smtp.qq.com 端口为 465 或 587，同时要设置开启 POP3/SMTP 服务。
+- smtp_smarthost: 这里为邮箱 SMTP 服务地址，同时要设置开启 POP3/SMTP 服务。
 
-- smtp_auth_password: 这里为第三方登录 QQ 邮箱的授权码，非 QQ 账户登录密码，否则会报错，获取方式在 QQ 邮箱服务端设置开启 POP3/SMTP 服务时会提示。
+- smtp_auth_password: 这里为第三方登录 邮箱的授权码。
 
 - smtp_require_tls: 是否使用 tls，根据环境不同，来选择开启和关闭。如果提示报错 email.loginAuth failed: 530 Must issue a STARTTLS command first，那么就需要设置为 true。着重说明一下，如果开启了 tls，提示报错 starttls failed: x509: certificate signed by unknown authority，需要在 email_configs 下配置 insecure_skip_verify: true 来跳过 tls 验证。
 
   
 
-修改AlertManager启动命令，将本地的alertmanager.yml文件挂载到容器内指定位置
+##### 4）修改AlertManager启动命令，将本地的alertmanager.yml文件挂载到容器内指定位置
 
 ```
 #docker run -d   \
@@ -218,7 +211,7 @@ receivers:
 
 ```
 
-需要在 Prometheus 配置 AlertManager 服务地址以及告警规则，新建报警规则文件 `node-up.rules` 如下：
+##### 5）需要在 Prometheus 配置 AlertManager 服务地址以及告警规则，新建报警规则文件 `node-up.rules` 如下：
 
 ```
 $ mkdir -p /root/prometheus/rules && cd /root/prometheus/rules/
@@ -237,10 +230,9 @@ groups:
 
 ```
 
-说明一下：该 rules 目的是监测 node 是否存活，expr 为 PromQL 表达式验证特定节点 job="node-exporter" 是否活着，for 表示报警状态为 Pending 后等待 15s 变成 Firing 状态，一旦变成 Firing 状态则将报警发送到 AlertManager，labels 和 annotations 对该 alert 添加更多的标识说明信息，所有添加的标签注解信息，以及 prometheus.yml 中该 job 已添加 label 都会自动添加到邮件内容中
+**说明一下**：该 rules 目的是监测 node 是否存活，expr 为 PromQL 表达式验证特定节点 job="node-exporter" 是否活着，for 表示报警状态为 Pending 后等待 15s 变成 Firing 状态，一旦变成 Firing 状态则将报警发送到 AlertManager，labels 和 annotations 对该 alert 添加更多的标识说明信息，所有添加的标签注解信息，以及 prometheus.yml 中该 job 已添加 label 都会自动添加到邮件内容中
 
-
-修改 `prometheus.yml` 配置文件，添加 rules 规则文件。
+##### 6） 修改 `prometheus.yml` 配置文件，添加 rules 规则文件
 
 ```
 ...
@@ -249,36 +241,24 @@ alerting:
   alertmanagers:
   - static_configs:
     - targets:
-      - 172.30.12.39:9093
+      - 172.317.0.47:9093
 
 rule_files:
   - "/usr/local/prometheus/rules/*.rules"
-
+...
 ```
 
-注意: 这里 `rule_files` 为容器内路径，需要将本地 `node-up.rules` 文件挂载到容器内指定路径，修改 Prometheus 启动命令如下，并重启服务
+##### 7）Prometheus 重启服务并停止node-exporter
 
 ```
-$ docker run --name prometheus -d -p 9090:9090  \
-	-v /root/prom/prometheus.yml:/etc/prometheus/prometheus.yml  \
-	-v /root/prom/groups/:/usr/local/prometheus/groups/  \
-	-v /root/prom/rules/:/usr/local/prometheus/rules/   \
-	prom/prometheus:latest
-	
-$ docker run --name prometheus -d -p 9090:9090  \
-	-v /root/prom/prometheus.yml:/etc/prometheus/prometheus.yml  \
-	-v /root/prom/rules/:/usr/local/prometheus/rules/   \
-	-v /root/prom/file_ds.json:/etc/prometheus/file_ds.json \
-	prom/prometheus:latest	
-	
-docker run --name prometheus -d \
-  -p 9090:9090 \
-  -v /root/prom/prometheus.yml:/etc/prometheus/prometheus.yml  \
-  -v /root/prom/file_ds.json:/etc/prometheus/file_ds.json \
-  prom/prometheus:latest
+#systemctl restart prometheus  # prometheus服务机
+
+#docker stop   node-exporter    # node 监控主机执行
 ```
 
-#查看：172.17.0.47:9090/rules
+##### 8）QQ邮箱收到告警截图
+
+![image-20200306151423745](C:\Users\chenh\AppData\Roaming\Typora\typora-user-images\image-20200306151423745.png)
 
 
 
@@ -289,47 +269,6 @@ docker run --name prometheus -d \
 ## 6、在测试云节点上部署：blackbox_exporter、memcached_exporter、mysqld_exporter、node_exporter，提供部署配置说明，提供监控IP和端口，使上面程序保持运行(可用supervisor管理)
 
 ```
-global:
-  scrape_interval: 15s
-  scrape_timeout: 10s
-  evaluation_interval: 15s
-
-alerting:
-  alertmanagers:
-  - static_configs:
-    - targets: [172.17.0.47:9093]
-
-rule_files:
-  -"/usr/local/prometheus/rules/*.rules"
-
-scrape_configs:
-  - job_name: 'prometheus'
-    static_configs:
-    - targets:
-      - localhost:9090
-
-  - job_name: 'linux'
-    static_configs:
-      - targets: ['172.17.0.10:9100','172.17.0.11:9100','172.17.0.12:9100']
-
-  - job_name: 'mysql'
-    static_configs:
-      - targets: ['172.17.0.10:9104']
-
-  - job_name: 'file_ds'
-    file_sd_configs:
-      - files:
-        - /etc/prometheus/file_ds.json
-        refresh_interval: 10s
-
-  - job_name: 'pushgateway'
-    static_configs:
-      - targets: ['172.17.0.47:9091']
-
-  - job_name: 'node-exporter'
-    static_configs:
-      - targets: ['172.17.0.47:9100']
-
 
 ```
 

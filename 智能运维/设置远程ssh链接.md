@@ -38,7 +38,7 @@ EOF
 vi /etc/ssh/sshd_config
 
 Port 22
-PermitRootLogin yes
+PermitRootLogin yesreboot
 UsePAM yes
 PasswordAuthentication yes
 PubkeyAuthentication yes
@@ -46,5 +46,8 @@ AuthorizedKeysFile .ssh/authorized_keys
 
 5、重新启动ssh
 #systemctl restart sshd
+
+6、出现错误时链接不上
+#ssh-keygen -R "你的远程服务器ip地址"  
 ```
 
