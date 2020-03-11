@@ -1,5 +1,3 @@
-## 1、**Prometheus**自动发现被监控节点的配置方法？即图中的discover targets的file_sd方式
-
 ##### 1）创建json文件
 
 ```
@@ -15,10 +13,10 @@
 
 ```
    ...
-   - job_name: 'file_ds_server'
+   - job_name: 'file_sd'
     file_sd_configs:
       - files:
-        - /usr/local/prometheus/file_ds_server.json file
+        - /usr/local/prometheus/file_sd.json file
         refresh_interval: 10s
    ...
 
@@ -179,7 +177,7 @@ route:
 receivers:
 - name: 'email'
   email_configs:
-  - to: 'zhangyx@capitek.com.cn'
+  - to: '431062912@qq.com'
     send_resolved: true
 inhibit_rules:
   - source_match:
@@ -264,11 +262,172 @@ rule_files:
 
 ## 4、对**AlertManager**进行配置，将告警发送到微信方式，提供部署配置说明
 
+##### 1）配置yml文件
+
+```
+#vi  /root/prom/alertmanager2.yml
+
+route:
+  group_by: ['alertname']
+  receiver: 'wechat'
+
+receivers:
+- name: 'wechat'
+  wechat_configs:
+  - corp_id: 'ww718b117b150277e6'
+    to_party: '1'
+    agent_id: '1000003'
+    api_secret: 'bC0Vpk9cfvRl3R3bURqAeQyXADyrU1r1YuSLUy7DRxU'
+
+
+global:
+  resolve_timeout: 2m
+  wechat_api_url: 'https://qyapi.weixin.qq.com/cgi-bin/'
+  wechat_api_secret: 'bC0Vpk9cfvRl3R3bURqAeQyXADyrU1r1YuSLUy7DRxU'
+  wechat_api_corp_id: 'ww718b117b150277e6'
+
+route:
+  group_by: ['alertname']
+  group_wait: 5s
+  group_interval: 5s
+  repeat_interval: 5m
+  receiver: 'wechat'
+receivers:
+- name: 'wechat'
+  wechat_configs:
+  - send_resolved: true
+    to_party: '1'
+    agent_id: '1000003'
+    
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'dev', 'instance'] 
+    
+    
+    
+global:
+  resolve_timeout: 5m
+  wechat_api_corp_id: 'ww718b117b150277e6'
+  wechat_api_url: 'https://qyapi.weixin.qq.com/cgi-bin/'
+  wechat_api_secret: 'bC0Vpk9cfvRl3R3bURqAeQyXADyrU1r1YuSLUy7DRxU'
+ 
+route:
+  group_by: ['alertname']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 1h
+  receiver: 'wechat'
+receivers:
+- name: 'wechat'
+  wechat_configs:
+  - send_resolved: true
+    to_party: '1'
+    agent_id: 1000003
+    corp_id: 'ww718b117b150277e6'
+    api_url: 'https://qyapi.weixin.qq.com/cgi-bin/'
+    api_secret: 'bC0Vpk9cfvRl3R3bURqAeQyXADyrU1r1YuSLUy7DRxU'
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'dev', 'instance']
+
+```
+
+##### 2）启动容器
+
+```
+#docker run -d   \
+	--name alertmanager2 \
+	-p 9094:9093  \
+	-v /root/prom/alertmanager2.yml:/etc/alertmanager/alertmanager.yml \
+	prom/alertmanager:latest
+	
+#新的告警 ，为了方便配置，名字端口设置有改动。
+```
+
+
+
 ## 5、对**AlertManager**进行配置，将告警发送到Webhook方式，提供部署配置说明
 
-## 6、在测试云节点上部署：blackbox_exporter、memcached_exporter、mysqld_exporter、node_exporter，提供部署配置说明，提供监控IP和端口，使上面程序保持运行(可用supervisor管理)
+## 6、在测试云节点上部署：blackbox_exporter、memcached_exporter、mysqld_exporter、node_exporter，提供部署配置说明，提供监控IP和端口，使上面程序保持运行(可用supervisor管理）
+
+##### 1）supervisor安装
 
 ```
+#yum install epel-release
+#yum install -y supervisor
 
+#systemctl enable supervisord # 开机自启动
+#systemctl start supervisord # 启动supervisord服务
+
+#systemctl status supervisord # 查看supervisord服务状态
+#ps -ef|grep supervisord # 查看是否存在supervisord进程
 ```
 
+#####  2）配置
+
+```
+#mkdir  /etc/supervisor
+#echo_supervisord_conf > /etc/supervisor/supervisord.conf
+
+#mkdir /etc/supervisor/config.d/
+#vi /usr/lib/systemd/system/supervisord.service
+。。。修改start路径
+#systemctl daemon-reload
+#systemctl restart supervisord
+
+#vi /etc/supervisor/supervisord.conf
+...修改如下
+[inet_http_server]         ;HTTP服务器，提供web管理界面
+port=127.0.0.1:9001        ;Web管理后台运行的IP和端口，改为0.0.0.0：9001，如果开放到公网，需要注意安全性  
+username=user              ;登录管理后台的用户名
+password=123               ;登录管理后台的密码
+...
+[include]
+files = /etc/supervisor/config.d/*.ini    ;可以指定一个或多个以.ini结束的配置文件
+
+#systemctl restart supervisord
+#systemctl  status supervisord
+```
+
+##### 3） 子程序配置
+
+以node_exporter为例
+
+```
+#vi  /etc/supervisor/config.d/node_exporter.ini
+
+[program:node_exporter]
+autostart = true
+autorestart = true
+command = /opt/prometheus/node_exporter/node_exporter #node-exporter执行路径
+startretries = 3
+user = root 
+
+注意：需要安装对应的node-exporter
+#对应的web管理界面为172.17.0.48:9001
+```
+
+![image-20200311095401638](C:\Users\chenh\AppData\Roaming\Typora\typora-user-images\image-20200311095401638.png)
+
+##### 4）bash终端相关命令
+
+```
+1 supervisorctl status
+2 supervisorctl stop celeryd
+3 supervisorctl start celeryd
+4 supervisorctl restart celeryd
+5 supervisorctl reread
+6 supervisorctl update
+```
+
+
+
+##### 5）进程安装
+
+安装mysql_exporter
