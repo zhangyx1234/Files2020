@@ -1,3 +1,7 @@
+[TOC]
+
+## 1、**Prometheus**自动发现被监控节点的配置方法？即图中的discover targets的file_sd方式
+
 ##### 1）创建json文件
 
 ```
@@ -265,27 +269,16 @@ rule_files:
 ##### 1）配置yml文件
 
 ```
-#vi  /root/prom/alertmanager2.yml
-
-route:
-  group_by: ['alertname']
-  receiver: 'wechat'
-
-receivers:
-- name: 'wechat'
-  wechat_configs:
-  - corp_id: 'ww718b117b150277e6'
-    to_party: '1'
-    agent_id: '1000003'
-    api_secret: 'bC0Vpk9cfvRl3R3bURqAeQyXADyrU1r1YuSLUy7DRxU'
-
+#vi  /root/prom/alertmanager.yml
 
 global:
-  resolve_timeout: 2m
-  wechat_api_url: 'https://qyapi.weixin.qq.com/cgi-bin/'
-  wechat_api_secret: 'bC0Vpk9cfvRl3R3bURqAeQyXADyrU1r1YuSLUy7DRxU'
-  wechat_api_corp_id: 'ww718b117b150277e6'
-
+  resolve_timeout: 5m
+  smtp_from: '15933356856@163.com'
+  smtp_smarthost: 'smtp.163.com:25'
+  smtp_auth_username: '15933356856@163.com'
+  smtp_auth_password: 'xing1110'
+  smtp_require_tls: false
+  smtp_hello: 'qq.com'
 route:
   group_by: ['alertname']
   group_wait: 5s
@@ -293,40 +286,16 @@ route:
   repeat_interval: 5m
   receiver: 'wechat'
 receivers:
+- name: 'email'
+  email_configs:
+  - to: '431062912@qq.com'
+    send_resolved: true
 - name: 'wechat'
   wechat_configs:
   - send_resolved: true
-    to_party: '1'
-    agent_id: '1000003'
-    
-inhibit_rules:
-  - source_match:
-      severity: 'critical'
-    target_match:
-      severity: 'warning'
-    equal: ['alertname', 'dev', 'instance'] 
-    
-    
-    
-global:
-  resolve_timeout: 5m
-  wechat_api_corp_id: 'ww718b117b150277e6'
-  wechat_api_url: 'https://qyapi.weixin.qq.com/cgi-bin/'
-  wechat_api_secret: 'bC0Vpk9cfvRl3R3bURqAeQyXADyrU1r1YuSLUy7DRxU'
- 
-route:
-  group_by: ['alertname']
-  group_wait: 10s
-  group_interval: 10s
-  repeat_interval: 1h
-  receiver: 'wechat'
-receivers:
-- name: 'wechat'
-  wechat_configs:
-  - send_resolved: true
-    to_party: '1'
+    to_party: '2'
     agent_id: 1000003
-    corp_id: 'ww718b117b150277e6'
+    corp_id: 'ww718b117b150277e6'   
     api_url: 'https://qyapi.weixin.qq.com/cgi-bin/'
     api_secret: 'bC0Vpk9cfvRl3R3bURqAeQyXADyrU1r1YuSLUy7DRxU'
 inhibit_rules:
@@ -335,26 +304,26 @@ inhibit_rules:
     target_match:
       severity: 'warning'
     equal: ['alertname', 'dev', 'instance']
-
 ```
 
 ##### 2）启动容器
 
 ```
 #docker run -d   \
-	--name alertmanager2 \
+	--name alertmanager \
 	-p 9094:9093  \
-	-v /root/prom/alertmanager2.yml:/etc/alertmanager/alertmanager.yml \
+	-v /root/prom/alertmanager.yml:/etc/alertmanager/alertmanager.yml \
 	prom/alertmanager:latest
 	
-#新的告警 ，为了方便配置，名字端口设置有改动。
 ```
 
+##### 3）告警截图
 
+![](C:\Users\chenh\AppData\Roaming\Typora\typora-user-images\image-20200312103806490.png)
 
 ## 5、对**AlertManager**进行配置，将告警发送到Webhook方式，提供部署配置说明
 
-## 6、在测试云节点上部署：blackbox_exporter、memcached_exporter、mysqld_exporter、node_exporter，提供部署配置说明，提供监控IP和端口，使上面程序保持运行(可用supervisor管理）
+## 6、在测试云节点上部署：blackbox_exporter、memcached_exporter、 mysqld_exporter、node_exporter，提供部署配置说明，提供监控IP和端口，使上面程序保持运行(可用supervisor管理）
 
 ##### 1）supervisor安装
 
@@ -413,8 +382,6 @@ user = root
 #对应的web管理界面为172.17.0.48:9001
 ```
 
-![image-20200311095401638](C:\Users\chenh\AppData\Roaming\Typora\typora-user-images\image-20200311095401638.png)
-
 ##### 4）bash终端相关命令
 
 ```
@@ -430,4 +397,207 @@ user = root
 
 ##### 5）进程安装
 
-安装mysql_exporter
+###### mysql_exporter安装
+
+- 下载压缩包
+
+```
+#wget https://github.com/prometheus/mysqld_exporter/releases/download/v0.12.1/mysqld_exporter-0.12.1.linux-amd64.tar.gz
+```
+
+- 解压缩
+
+
+```
+ #tar -zxvf mysqld_exporter-0.12.1.linux-amd64.tar.gz
+ #mkdir /usr/local/mysql_exporter/
+ #mv mysqld_exporter-0.12.1.linux-amd64  /usr/local/mysql_exporter/
+ #chmod +X /usr/local/mysql_exporter
+```
+
+- mysql_exporter连接到mysql
+
+
+```
+mysql> GRANT REPLICATION CLIENT,PROCESS ON *.* TO 'root'@'localhost' identified by '123456';
+mysql> GRANT SELECT ON *.* TO 'root'@'localhost';
+mysql> flush privileges;
+```
+
+- 创建my.cnf	
+
+```
+[client]
+user = root
+password = 123456
+```
+
+- 设置开机启动
+
+```
+#vim /usr/lib/systemd/system/mysql_exporter.service
+
+[Unit]
+Description=mysql_exporter
+Documentation=https://prometheus.io/
+After=network.target
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/local/mysql_exporter/mysqld_exporter-0.12.1.linux-amd64/mysqld_exporter --config.my-cnf=/usr/local/mysql_exporter/mysqld_exporter-0.12.1.linux-amd64/my.cnf
+[Install]
+WantedBy=multi-user.target
+	
+#systemctl enable node_exporter
+#systemctl start node_exporter
+#systemctl stop node_exporter
+#systemctl disable node_exporter
+
+```
+
+**注**：此处为了方便查看控制，顺便加入的启动服务，具体如果是supervisor管理的话，该过程可以不配置。
+
+- 修改prometheus服务器配置文件并重启
+
+
+```
+#vim  /usr/local/prometheus/prometheus-2.15.2.linux-amd64/prometheus.yml
+  新增：
+
+- job_name: 'mysql'
+  static_configs:
+  - targets: ['172.17.0.48:9104']
+      
+#systemctl  restart prometheus
+```
+
+- supervisor子程序配置
+
+```
+#vi  /etc/supervisor/config.d/mysql_exporter.ini
+
+[program:mysql_exporter]
+autostart = true
+autorestart = true
+command = /usr/local/mysql_exporter/mysqld_exporter-0.12.1.linux-amd64/mysqld_exporter --config.my-cnf=/usr/local/mysql_exporter/mysqld_exporter-0.12.1.linux-amd64/my.cnf 
+startretries = 3
+user = root 
+
+
+#systemctl  restart  supervisord
+```
+
+###### blackbox_exporter安装
+
+- 下载压缩包
+
+```
+#wget https://github.com/prometheus/blackbox_exporter/releases/download/v0.16.0/blackbox_exporter-0.16.0.linux-amd64.tar.gz
+```
+
+- 解压缩
+
+```
+ #tar -zxvf blackbox_exporter-0.16.0.linux-amd64.tar.gz
+ #mkdir /usr/local/blackbox_exporter/
+ #mv blackbox_exporter-0.16.0.linux-amd64  /usr/local/blackbox_exporter/
+ #chmod +X /usr/local/blackbox_exporter/blackbox_exporter-0.16.0.linux-amd64/
+```
+
+- supervisor子程序配置
+
+```
+#vi  /etc/supervisor/config.d/blackbox_exporter.ini
+
+[program:blackbox_exporter]
+autostart = true
+autorestart = true
+command = /usr/local/blackbox_exporter/blackbox_exporter-0.16.0.linux-amd64/blackbox_exporter --config.file=/usr/local/blackbox_exporter/blackbox_exporter-0.16.0.linux-amd64/blackbox.yml
+startretries = 3
+user = root 
+
+#systemctl restart supervisord
+```
+
+- prometheus简单配置
+
+```
+#vim  /usr/local/prometheus/prometheus-2.15.2.linux-amd64/prometheus.yml
+
+  - job_name: 'blackbox'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]  # Look for a HTTP 200 response.
+    static_configs:
+      - targets:
+        - http://prometheus.io    # Target to probe with http.
+        - https://prometheus.io   # Target to probe with https.
+        - http://example.com:8080 # Target to probe with http on port 8080.
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 172.17.048:9115  # The blackbox exporter's real hostname:port.
+```
+
+###### memcached_exporter安装
+
+- 下载压缩包
+
+```
+#wget https://github.com/prometheus/memcached_exporter/releases/download/v0.6.0/memcached_exporter-0.6.0.linux-amd64.tar.gz
+```
+
+- 解压缩
+
+```
+ #tar -zxvf memcached_exporter-0.6.0.linux-amd64.tar.gz
+ #mkdir /usr/local/memcached_exporter/
+ #mv memcached_exporter-0.6.0.linux-amd64  /usr/local/memcached_exporter/
+ #chmod +X /usr/local/memcached_exporter/memcached_exporter-0.6.0.linux-amd64/
+```
+
+- supervisor子程序配置
+
+```
+#vi  /etc/supervisor/config.d/memcached_exporter.ini
+
+[program:memcached_exporter]
+autostart = true
+autorestart = true
+command = /usr/local/memcached_exporter/memcached_exporter-0.6.0.linux-amd64/memcached_exporter
+startretries = 3
+user = root 
+
+#systemctl restart supervisord
+```
+
+- prometheus简单配置
+
+```
+#vim  /usr/local/prometheus/prometheus-2.15.2.linux-amd64/prometheus.yml
+
+  - job_name: 'memcached_exporter'
+    honor_labels: true
+    static_configs:
+    - targets: ['172.17.0.48:9150']
+
+```
+
+
+
+##### 6）supervisor web api
+
+http://172.17.0.48:9001/   
+
+用户名：user 
+
+密码： 123
+
+![image-20200312144926768](C:\Users\chenh\AppData\Roaming\Typora\typora-user-images\image-20200312144926768.png)
+
+##### 7）proemtheus web api
+
+http://172.17.0.41:9090/
