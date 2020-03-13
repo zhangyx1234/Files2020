@@ -42,13 +42,11 @@
 
 添加前：
 
-![image-20200303144303293](C:\Users\chenh\AppData\Roaming\Typora\typora-user-images\image-20200303144303293.png)
+![avatar](prometheus%E6%9C%80%E6%96%B0%E7%A0%94%E7%A9%B6.assets/image-20200303144303293.png)
 
 添加后：
 
-![image-20200303145039737](C:\Users\chenh\AppData\Roaming\Typora\typora-user-images\image-20200303145039737.png)
-
-
+![avatar](prometheus%E6%9C%80%E6%96%B0%E7%A0%94%E7%A9%B6.assets/image-20200303145039737.png)
 
 注：webAPI：http://172.17.0.41:9090/
 
@@ -111,9 +109,7 @@ curl -X DELETE http://172.17.0.41:9091/metrics/job/some_job
 
 ##### 4）数据push成功截图
 
-![image-20200306154150436](C:\Users\chenh\AppData\Roaming\Typora\typora-user-images\image-20200306154150436.png)
-
-![image-20200306154218288](C:\Users\chenh\AppData\Roaming\Typora\typora-user-images\image-20200306154218288.png)
+![avatar](prometheus%E6%9C%80%E6%96%B0%E7%A0%94%E7%A9%B6.assets/image-20200306154218288.png)
 
 ## 3、对**AlertManager**进行配置，将告警发送到邮件方式，提供部署配置说明
 
@@ -145,7 +141,7 @@ route:
 receivers:
 - name: 'web.hook'
   webhook_configs:
-  - url: 'http://127.0.0.1:5001/'
+  - url: 'http://172.17.0.123:5001/'
 inhibit_rules:
   - source_match:
       severity: 'critical'
@@ -167,19 +163,19 @@ inhibit_rules:
 ```
 global:
   resolve_timeout: 5m
-  smtp_smarthost: 'smtp.163.com'
-  smtp_auth_username: '15933356856@163.'
-  smtp_auth_password: 'xing1110'
+  smtp_smarthost: 'smtp.163.com:25'
+  smtp_auth_username: '15933356856@163.com'
+  smtp_from: '15933356856@163.com'
+  smtp_auth_password: 'zyx1226'
   smtp_require_tls: false
-  smtp_hello: 'capitek.com.cn'
 route:
   group_by: ['alertname']
   group_wait: 5s
   group_interval: 5s
   repeat_interval: 5m
-  receiver: 'email'
+  receiver: 'mail'
 receivers:
-- name: 'email'
+- name: 'mail'
   email_configs:
   - to: '431062912@qq.com'
     send_resolved: true
@@ -213,7 +209,9 @@ inhibit_rules:
 
 ```
 
-##### 5）需要在 Prometheus 配置 AlertManager 服务地址以及告警规则，新建报警规则文件 `node-up.rules` 如下：
+##### 5）需要在 Prometheus 配置 AlertManager 服务地址以及告警规则
+
+新建报警规则文件 `node-up.rules` 如下：
 
 ```
 $ mkdir -p /root/prometheus/rules && cd /root/prometheus/rules/
@@ -229,6 +227,28 @@ groups:
       team: node
     annotations:
       summary: "{{ $labels.instance }} 已停止运行超过 15s！"
+
+$ vim 2.yml
+groups:
+- name: node-up
+  rules:
+  - alert: node-up
+    expr: up{job="node-exporter"} == 0
+    for: 15s
+    labels:
+      severity: 1
+      team: node
+    annotations:
+      summary: 
+        {
+            "msgtype": "text",
+            "text": {
+                "content": "{{ $labels.instance }} 已停止运行超过 15s！"
+             }
+        }
+
+
+
 
 ```
 
@@ -260,7 +280,7 @@ rule_files:
 
 ##### 8）QQ邮箱收到告警截图
 
-![image-20200306151423745](C:\Users\chenh\AppData\Roaming\Typora\typora-user-images\image-20200306151423745.png)
+![avatar](prometheus%E6%9C%80%E6%96%B0%E7%A0%94%E7%A9%B6.assets/image-20200306151423745.png)
 
 
 
@@ -276,9 +296,8 @@ global:
   smtp_from: '15933356856@163.com'
   smtp_smarthost: 'smtp.163.com:25'
   smtp_auth_username: '15933356856@163.com'
-  smtp_auth_password: 'xing1110'
+  smtp_auth_password: 'zyx1226'
   smtp_require_tls: false
-  smtp_hello: 'qq.com'
 route:
   group_by: ['alertname']
   group_wait: 5s
@@ -311,6 +330,67 @@ inhibit_rules:
 ```
 #docker run -d   \
 	--name alertmanager \
+	-p 9093:9093  \
+	-v /root/prom/alertmanager.yml:/etc/alertmanager/alertmanager.yml \
+	prom/alertmanager:latest
+	
+```
+
+##### 3）告警截图
+
+![avatar](prometheus%E6%9C%80%E6%96%B0%E7%A0%94%E7%A9%B6.assets/image-20200312103806490.png)
+
+## 5、对**AlertManager**进行配置，将告警发送到Webhook方式，提供部署配置说明
+
+##### 1）配置yml文件
+
+```
+#vi  /root/prom/alertmanager.yml
+
+global:
+  resolve_timeout: 5m
+  smtp_from: '15933356856@163.com'
+  smtp_smarthost: 'smtp.163.com:25'
+  smtp_auth_username: '15933356856@163.com'
+  smtp_auth_password: 'zyx1226'
+  smtp_require_tls: false
+route:
+  group_by: ['alertname']
+  group_wait: 5s
+  group_interval: 5s
+  repeat_interval: 5m
+  receiver: 'web.hook'
+receivers:
+- name: 'email'
+  email_configs:
+  - to: '431062912@qq.com'
+    send_resolved: true
+- name: 'wechat'
+  wechat_configs:
+  - send_resolved: true
+    to_party: '2'
+    agent_id: 1000003
+    corp_id: 'ww718b117b150277e6'   
+    api_url: 'https://qyapi.weixin.qq.com/cgi-bin/'
+    api_secret: 'bC0Vpk9cfvRl3R3bURqAeQyXADyrU1r1YuSLUy7DRxU'
+- name: 'web.hook'
+  webhook_configs:
+  - send_resolved: true 
+    url: 'https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=fd274b2f-f1c6-4755-9161-440899b8edac'
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'dev', 'instance']
+
+```
+
+##### 2）启动容器
+
+```
+#docker run -d   \
+	--name alertmanager \
 	-p 9094:9093  \
 	-v /root/prom/alertmanager.yml:/etc/alertmanager/alertmanager.yml \
 	prom/alertmanager:latest
@@ -319,9 +399,7 @@ inhibit_rules:
 
 ##### 3）告警截图
 
-![](C:\Users\chenh\AppData\Roaming\Typora\typora-user-images\image-20200312103806490.png)
 
-## 5、对**AlertManager**进行配置，将告警发送到Webhook方式，提供部署配置说明
 
 ## 6、在测试云节点上部署：blackbox_exporter、memcached_exporter、 mysqld_exporter、node_exporter，提供部署配置说明，提供监控IP和端口，使上面程序保持运行(可用supervisor管理）
 
@@ -596,8 +674,16 @@ http://172.17.0.48:9001/
 
 密码： 123
 
-![image-20200312144926768](C:\Users\chenh\AppData\Roaming\Typora\typora-user-images\image-20200312144926768.png)
+![avatar](prometheus%E6%9C%80%E6%96%B0%E7%A0%94%E7%A9%B6.assets/image-20200312144926768.png)
 
 ##### 7）proemtheus web api
 
 http://172.17.0.41:9090/
+
+![image-20200312160725949](prometheus%E6%9C%80%E6%96%B0%E7%A0%94%E7%A9%B6.assets/image-20200312160725949.png)
+
+
+
+![image-20200312160750974](prometheus%E6%9C%80%E6%96%B0%E7%A0%94%E7%A9%B6.assets/image-20200312160750974.png)
+
+![image-20200312160813627](prometheus%E6%9C%80%E6%96%B0%E7%A0%94%E7%A9%B6.assets/image-20200312160813627.png)
