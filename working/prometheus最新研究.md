@@ -377,6 +377,7 @@ receivers:
   webhook_configs:
   - send_resolved: true 
     url: 'https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=fd274b2f-f1c6-4755-9161-440899b8edac'
+    http_config: global.http_config
 inhibit_rules:
   - source_match:
       severity: 'critical'
