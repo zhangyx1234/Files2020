@@ -222,33 +222,24 @@ groups:
   - alert: node-up
     expr: up{job="node-exporter"} == 0
     for: 15s
-    labels:
+    labels: 
       severity: 1
       team: node
     annotations:
       summary: "{{ $labels.instance }} 已停止运行超过 15s！"
+      
 
-$ vim 2.yml
 groups:
 - name: node-up
   rules:
   - alert: node-up
     expr: up{job="node-exporter"} == 0
     for: 15s
-    labels:
+    labels: 
       severity: 1
       team: node
     annotations:
-      summary: 
-        {
-            "msgtype": "text",
-            "text": {
-                "content": "{{ $labels.instance }} 已停止运行超过 15s！"
-             }
-        }
-
-
-
+      summary: "{{ $labels.instance }} 已停止运行超过 15s！"
 
 ```
 
@@ -354,6 +345,8 @@ global:
   smtp_auth_username: '15933356856@163.com'
   smtp_auth_password: 'zyx1226'
   smtp_require_tls: false
+templates:
+  - '/etc/alertmanager/template/*.tmpl'
 route:
   group_by: ['alertname']
   group_wait: 5s
@@ -361,29 +354,59 @@ route:
   repeat_interval: 5m
   receiver: 'web.hook'
 receivers:
-- name: 'email'
-  email_configs:
-  - to: '431062912@qq.com'
-    send_resolved: true
-- name: 'wechat'
-  wechat_configs:
-  - send_resolved: true
-    to_party: '2'
-    agent_id: 1000003
-    corp_id: 'ww718b117b150277e6'   
-    api_url: 'https://qyapi.weixin.qq.com/cgi-bin/'
-    api_secret: 'bC0Vpk9cfvRl3R3bURqAeQyXADyrU1r1YuSLUy7DRxU'
 - name: 'web.hook'
   webhook_configs:
-  - send_resolved: true 
+  - send_resolved: true
     url: 'https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=fd274b2f-f1c6-4755-9161-440899b8edac'
-    http_config: global.http_config
+    text: '{{ template "1.text" . }}'
 inhibit_rules:
   - source_match:
       severity: 'critical'
     target_match:
       severity: 'warning'
     equal: ['alertname', 'dev', 'instance']
+
+ 
+    
+vi /root/prom/tmpl/1.tmpl
+ 
+{{ define "1.text" }}
+
+        ========start=========
+		告警程序: prometheus_alert
+		告警级别: {{ .Labels.serverity }}
+		告警类型: {{ .Labels.alertname }}
+		故障主机: {{ .Labels.instance }}
+		告警主题: {{ .Annotations.summary }}
+		告警详情: {{ .Annotations.description }}
+		触发时间: {{ .StartsAt.Format "2006-01-02 15:04:05" }}
+		=========end===========
+        "
+
+{{ end }}
+
+
+{{ define "1.text" }}
+curl 'https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=fd274b2f-f1c6-4755-9161-440899b8edac' \
+   -H 'Content-Type: application/json' \
+   -d '
+   {
+        "msgtype": "text",
+        "text": {
+            "content": "
+        ========start=========
+		告警程序: prometheus_alert
+		告警级别: {{ .Labels.serverity }}
+		告警类型: {{ .Labels.alertname }}
+		故障主机: {{ .Labels.instance }}
+		告警主题: {{ .Annotations.summary }}
+		告警详情: {{ .Annotations.description }}
+		触发时间: {{ .StartsAt.Format "2006-01-02 15:04:05" }}
+		=========end===========
+		"
+        }
+   }'
+ {{ end }}
 
 ```
 
@@ -392,8 +415,15 @@ inhibit_rules:
 ```
 #docker run -d   \
 	--name alertmanager \
-	-p 9094:9093  \
+	-p 9093:9093  \
 	-v /root/prom/alertmanager.yml:/etc/alertmanager/alertmanager.yml \
+	prom/alertmanager:latest
+	
+docker run -d   \
+	--name alertmanager \
+	-p 9093:9093  \
+	-v /root/prom/alertmanager.yml:/etc/alertmanager/alertmanager.yml \
+	-v /root/prom/tmpl/:/etc/alertmanager/template/ \
 	prom/alertmanager:latest
 	
 ```
