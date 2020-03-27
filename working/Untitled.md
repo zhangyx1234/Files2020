@@ -585,3 +585,71 @@ Q&A
 **Q：请问“再有上层Prometheus Server实现对数据的汇聚。”是表示该Prometheus会对下层Prometheus进行数据收集吗？使用什么接口？A：请参考Prometheus Fedreation（https://prometheus.io/docs/prometheus/latest/federation/），这里主要是指由一部分Prometheus实例负责采集任务，然后Global的Prometheus汇集数据，并对外提供查询接口。 减少Global Prometheus的压力。**
 **Q：两台Prometheus server 可否用Keepalived？A：直接负载均衡就可以了，对于Prometheus而言，实例之间本身并没有任何的直接关系。**
 **Q：用Prometheus监控业务的API接口，有什么好的方法吗，能监控数据库的慢查询吗？A：在系统中集成client_library,直接在代码中埋点。可以参考这个例子：https://github.com/yunlzheng/prometheus-book/blob/master/exporter/custom_app_support_prometheus.md。
+
+
+
+
+
+# prometheus中常用的查询
+
+prometheus server 可以通过HTTPAPI的方式进行查询，官网链接https://prometheus.io/docs/prometheus/latest/querying/basics/
+
+ 我这边主要用到的是实时查询，当然prometheus还支持历史查询，我这里 先介绍实时查询，其他的可以直接参考官方文档。
+
+实时查询接口：
+
+"%s/api/v1/query?query=%s"
+
+(1) 直接查询某一监控指标:
+
+比如查询 process_start_time_seconds,
+
+http://localhost:9090/api/v1/query?query=process_start_time_seconds
+
+{
+    "status":"success",
+    "data":{
+        "resultType":"vector",
+        "result":[
+            {
+                "metric":{
+                    "__name__":"process_start_time_seconds",
+                    "instance":"localhost:9090",
+                    "job":"prometheus"
+                },
+                "value":[
+                    1533194622.184,
+                    "1532609170.42"
+                ]
+            },
+            {
+                "metric":{
+                    "__name__":"process_start_time_seconds",
+                    "instance":"localhost:9295",
+                    "job":"postgres"
+                },
+                "value":[
+                    1533194622.184,
+                    "1533034386.88"
+                ]
+            }
+        ]
+    }
+}
+(2)根据某一字段加上标签：
+
+比如查询job为prometheus的process_start_time_seconds指标：
+
+http://localhost:9090/api/v1/query?query=process_start_time_seconds{job="prometheus"}
+
+(3)正则表达式匹配前缀：
+
+比如一些监控 指标都以pro开头，可以通过正则表达式匹配前缀的方式一把搂回来：
+
+htp://localhost:9090/api/v1/query?query={__name__=~"pro.*"}
+
+当然prometheus是支持各个标签 label之间通过and ，or ，unless进行组合，比如：
+
+htp://localhost:9090/api/v1/query?query={__name__=~"pro.*"}and{job="progres"}
+
+查询出job名为progres，标签名以pro为前缀的监控数据。
