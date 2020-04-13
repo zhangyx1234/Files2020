@@ -598,7 +598,7 @@ predict_linear(node_filesystem_free{job="node"}[2h], 4 * 3600)
 
 使用Heatmap Panel显示数据分布情况：
 
-# 三、prometheus中常用的查询
+# 三、prometheus中API查询
 
 ​        prometheus server 可以通过HTTPAPI的方式进行查询，官网链接https://prometheus.io/docs/prometheus/latest/querying/basics/
 
