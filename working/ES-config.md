@@ -58,3 +58,5 @@ remote_write:
 通过谷歌插件elasticsearch head插件查看
 
 ![image-20200417154545013](ES-config.assets/image-20200417154545013.png)
+
+![image-20200417155217581](ES-config.assets/image-20200417155217581.png)
