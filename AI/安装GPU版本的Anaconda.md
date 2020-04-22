@@ -1,3 +1,5 @@
+[TOC]
+
 ## 1、安装GPU版本的Anaconda
 
 ```linux

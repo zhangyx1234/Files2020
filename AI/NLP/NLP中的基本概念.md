@@ -1,4 +1,4 @@
-# [NLP里面的一些基本概念](https://www.cnblogs.com/hapjin/p/7581335.html)
+# NLP里面的一些基本概念
 
 ### 1，**corpus** 语料库
 
