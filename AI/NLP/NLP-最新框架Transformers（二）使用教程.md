@@ -17,7 +17,9 @@
 
 # 1、序列分类
 
-序列分类是根据已经给定的类别然后对序列进行分类的任务。序列分类的一个例子是GLUE数据集，它就是完全基于该任务的。如果你想在GLUE序列分类任务上微调模型，可以利用`run_GLUE.py`或`run_tf_GLUE.py`脚本。
+序列分类是根据已经给定的类别然后对序列进行分类的任务。
+
+序列分类的一个例子是GLUE数据集，它就是完全基于该任务的。如果你想在GLUE序列分类任务上微调模型，可以利用`run_GLUE.py`或`run_tf_GLUE.py`脚本。
 
 下面是一个使用管道进行情绪分析的例子：识别该序列是积极的还是消极的。它利用sst2上的微调模型，这是一个GLUE任务。
 
@@ -44,8 +46,6 @@ print(nlp("I love you"))
 - 将这个序列传递到模型中，以便将其分类到两个可用的类中的一个：0(不是解释)和1(是解释)
 - 计算结果的softmax获取类的概率
 - 打印结果
-
-Pytorch代码
 
 ```python
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
@@ -123,7 +123,7 @@ not paraphrase: 94%
 is paraphrase: 6%
 ```
 
-### 抽取式问答
+# 2、抽取式问答
 
 抽取式问答是从给定问题的文本中抽取答案的任务。问答数据集的一个例子是SQuAD数据集，它完全基于该任务。如果你想在团队任务中微调模型，可以利用`run_SQuAD.py`。
 
