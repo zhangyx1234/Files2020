@@ -1,1 +1,0 @@
-openstack volume service list
